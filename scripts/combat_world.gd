@@ -21,8 +21,9 @@ var bullet_speed: float = 400.0
 # Player position (recalculated each frame from viewport + lane)
 var player_x: float = 180.0
 var player_y: float = 240.0
-const PLAYER_BASE_WIDTH: float = 14.0
-const PLAYER_BASE_HEIGHT: float = 20.0
+var train_texture: Texture2D
+const TRAIN_TEX_ASPECT: float = 881.0 / 348.0  # width / height
+const TRAIN_BASE_WIDTH: float = 168.0  # pixels at scale 1.0
 
 # 5-lane depth scaling (back to front)
 const LANE_SCALES: Array[float] = [0.4, 0.7, 1.0, 1.3, 1.6]
@@ -32,7 +33,7 @@ var bg_offset: float = 0.0
 var fg_offset: float = 0.0
 
 func _ready():
-	pass
+	train_texture = preload("res://assets/images/train_top.png")
 
 func set_scroll_speed(speed: float):
 	scroll_speed = speed
@@ -104,9 +105,15 @@ func _input(event):
 # --- Bullet management ---
 
 func _shoot():
+	var lane = GameManager.player_lane
+	var sc = LANE_SCALES[lane]
+	var pw = TRAIN_BASE_WIDTH * sc
+	var ph = pw / TRAIN_TEX_ASPECT
+	var lane_y_offsets = [12.0, 6.0, 0.0, -6.0, -12.0]
+	var py = player_y + lane_y_offsets[lane]
 	var bullet = Node2D.new()
 	bullet.name = "Bullet"
-	bullet.position = Vector2(player_x, player_y - PLAYER_BASE_HEIGHT * LANE_SCALES[GameManager.player_lane] / 2.0)
+	bullet.position = Vector2(player_x, py - ph / 2.0)
 	bullet.set_meta("velocity", Vector2(0, -bullet_speed))
 	add_child(bullet)
 	bullets.append(bullet)
@@ -251,17 +258,14 @@ func _draw():
 		if hp < 2:
 			draw_rect(Rect2(ex - bw / 2 - 1, ey - bh / 2 - 1, bw + 2, bh + 2), Color(1, 1, 1, 0.3))
 
-	# Player train (gun turret view) — size scales with lane
+	# Player train (gun turret view) — texture scales with lane
 	var lane = GameManager.player_lane
 	var sc = LANE_SCALES[lane]
-	var pw = PLAYER_BASE_WIDTH * sc
-	var ph = PLAYER_BASE_HEIGHT * sc
+	var pw = TRAIN_BASE_WIDTH * sc
+	var ph = pw / TRAIN_TEX_ASPECT
 	# Slight Y offset per lane for depth feel
 	var lane_y_offsets = [12.0, 6.0, 0.0, -6.0, -12.0]
 	var py = player_y + lane_y_offsets[lane]
-	# Body
-	draw_rect(Rect2(player_x - pw / 2, py - ph / 2, pw, ph), Color(0.2, 0.5, 0.8))
-	# Turret barrel
-	draw_rect(Rect2(player_x - 2 * sc, py - ph / 2.0 - 8 * sc, 4 * sc, 8 * sc), Color(0.4, 0.4, 0.5))
-	# Turret base
-	draw_rect(Rect2(player_x - 5 * sc, py - ph / 2.0 - 3 * sc, 10 * sc, 5 * sc), Color(0.3, 0.3, 0.4))
+	# Centered on player position
+	var train_rect = Rect2(player_x - pw / 2.0, py - ph / 2.0, pw, ph)
+	draw_texture_rect(train_texture, train_rect, false)

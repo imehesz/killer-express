@@ -35,6 +35,7 @@ var obstacles: Array[Node2D] = []
 var obstacle_timer: float = 0.0
 var obstacle_spawn_interval: float = 1.5  # Slightly slower with wider track
 var obstacle_scene: PackedScene
+var bg_scroll_texture: Texture2D
 
 # Bullets
 var bullets: Array[Node2D] = []
@@ -60,6 +61,7 @@ var LANE_CONFIGS: Array = [
 
 func _ready():
 	obstacle_scene = preload("res://scenes/obstacle.tscn")
+	bg_scroll_texture = preload("res://assets/images/bottom-background-scroll.png")
 	train_node = Node2D.new()
 	train_node.name = "Train"
 	add_child(train_node)
@@ -346,29 +348,47 @@ func _draw():
 	if w < 10 or h < 10:
 		return
 
-	# Background
-	draw_rect(Rect2(0, 0, w, h), Color(0.06, 0.08, 0.06))
+	# Scrolling background
+	var tex_h = bg_scroll_texture.get_height()
+	var tex_w = bg_scroll_texture.get_width()
+	var offset_y = fmod(scroll_offset, tex_h)
+	var tile_x = (w - tex_w) / 2.0
+	var y = -tex_h + offset_y
+	while y < h:
+		draw_texture_rect_region(bg_scroll_texture, Rect2(tile_x, y, tex_w, tex_h), Rect2(0, 0, tex_w, tex_h))
+		y += tex_h
+
+	# Dim overlay gradient (50% black at top → transparent at bottom)
+	var steps = 20
+	var step_h = h / float(steps)
+	for s in range(steps):
+		var alpha = 0.5 * (1.0 - float(s) / float(steps))
+		draw_rect(Rect2(0, step_h * s, w, step_h + 1), Color(0, 0, 0, alpha))
 
 	if lane_positions.is_empty():
 		return
 
-	# Track bed area
-	var track_left = lane_positions[0] - LANE_SPACING / 2.0
-	var track_right = lane_positions[LANE_COUNT - 1] + LANE_SPACING / 2.0
-	draw_rect(Rect2(track_left, 0, track_right - track_left, h), Color(0.08, 0.10, 0.08))
 
 	# Track borders
-	draw_rect(Rect2(track_left - 2, 0, 2, h), Color(0.3, 0.25, 0.15))
-	draw_rect(Rect2(track_right, 0, 2, h), Color(0.3, 0.25, 0.15))
+	var track_left = lane_positions[0] - LANE_SPACING / 2.0
+	var track_right = lane_positions[LANE_COUNT - 1] + LANE_SPACING / 2.0
+	# Track border glow + core (red)
+	draw_rect(Rect2(track_left - 4, 0, 6, h), Color(0.9, 0.1, 0.1, 0.2))
+	draw_rect(Rect2(track_left - 2, 0, 2, h), Color(0.9, 0.15, 0.1))
+	draw_rect(Rect2(track_right - 1, 0, 6, h), Color(0.9, 0.1, 0.1, 0.2))
+	draw_rect(Rect2(track_right, 0, 2, h), Color(0.9, 0.15, 0.1))
 
 	# Main track lines (thin monorail rails)
 	for i in range(LANE_COUNT):
 		var lx = lane_positions[i]
-		draw_rect(Rect2(lx - TRACK_LINE_WIDTH / 2.0, 0, TRACK_LINE_WIDTH, h), Color(0.3, 0.35, 0.3))
+		# Rail glow
+		draw_rect(Rect2(lx - TRACK_LINE_WIDTH, 0, TRACK_LINE_WIDTH * 2, h), Color(1.0, 0.8, 0.1, 0.2))
+		# Rail core
+		draw_rect(Rect2(lx - TRACK_LINE_WIDTH / 2.0, 0, TRACK_LINE_WIDTH, h), Color(1.0, 0.85, 0.1))
 
 	# Erase track lines at junctions that have no straight path
 	# (visually tells the player they MUST turn here)
-	var bg_color = Color(0.06, 0.08, 0.06)
+	var bg_color = Color(0.06, 0.08, 0.06, 0.8)
 	var erase_h = 18.0  # Gap height above and below junction point
 	for j in junctions:
 		if not j.get_meta("has_straight", true):
@@ -428,18 +448,24 @@ func _draw_junctions():
 		# Draw crossover diagonal lines (always point forward = upward)
 		if has_left and j_lane > 0:
 			var target_x = lane_positions[j_lane - 1]
-			draw_line(Vector2(jx, jy), Vector2(target_x, jy - crossover_h), Color(0.5, 0.4, 0.2), 2.0)
+			# Crossover glow
+			draw_line(Vector2(jx, jy), Vector2(target_x, jy - crossover_h), Color(1.0, 0.8, 0.1, 0.25), 5.0)
+			# Crossover core
+			draw_line(Vector2(jx, jy), Vector2(target_x, jy - crossover_h), Color(1.0, 0.85, 0.1), 2.0)
 			# Switch point marker
-			draw_circle(Vector2(jx, jy), 3.5, Color(0.6, 0.5, 0.2))
+			draw_circle(Vector2(jx, jy), 3.5, Color(1.0, 0.85, 0.1))
 
 		if has_right and j_lane < LANE_COUNT - 1:
 			var target_x = lane_positions[j_lane + 1]
-			draw_line(Vector2(jx, jy), Vector2(target_x, jy - crossover_h), Color(0.5, 0.4, 0.2), 2.0)
+			# Crossover glow
+			draw_line(Vector2(jx, jy), Vector2(target_x, jy - crossover_h), Color(1.0, 0.8, 0.1, 0.25), 5.0)
+			# Crossover core
+			draw_line(Vector2(jx, jy), Vector2(target_x, jy - crossover_h), Color(1.0, 0.85, 0.1), 2.0)
 			draw_circle(Vector2(jx, jy), 3.5, Color(0.6, 0.5, 0.2))
 
 		# Straight-only junctions get a subtle marker
 		if not has_left and not has_right:
-			draw_circle(Vector2(jx, jy), 2.5, Color(0.35, 0.35, 0.3))
+			draw_circle(Vector2(jx, jy), 2.5, Color(1.0, 0.85, 0.1, 0.5))
 
 func _draw_turn_indicator():
 	# Two arrow indicators at the top of the viewport
