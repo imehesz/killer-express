@@ -1,5 +1,6 @@
 extends Node2D
 ## Top viewport: side-scrolling combat with enemies and shooting.
+## 5 depth lanes — sizes scale to simulate 3D perspective.
 ## Input is forwarded from the SubViewportContainer.
 
 var scroll_speed: float = 120.0
@@ -17,11 +18,14 @@ var enemy_spawn_interval: float = 1.5
 var bullets: Array[Node2D] = []
 var bullet_speed: float = 400.0
 
-# Player position
+# Player position (recalculated each frame from viewport + lane)
 var player_x: float = 180.0
 var player_y: float = 240.0
-const PLAYER_WIDTH: float = 24.0
-const PLAYER_HEIGHT: float = 20.0
+const PLAYER_BASE_WIDTH: float = 14.0
+const PLAYER_BASE_HEIGHT: float = 20.0
+
+# 5-lane depth scaling (back to front)
+const LANE_SCALES: Array[float] = [0.4, 0.7, 1.0, 1.3, 1.6]
 
 # Parallax
 var bg_offset: float = 0.0
@@ -41,8 +45,11 @@ func _process(delta: float):
 	if vs.x < 10 or vs.y < 10:
 		return
 
-	player_y = vs.y * 0.78
 	player_x = vs.x / 2.0
+	# Player Y shifts slightly based on lane (deeper = higher on screen)
+	var lane = GameManager.player_lane
+	var lane_y_factors = [0.82, 0.80, 0.78, 0.76, 0.74]
+	player_y = vs.y * lane_y_factors[lane]
 
 	# Scroll
 	scroll_offset += scroll_speed * delta
@@ -99,7 +106,7 @@ func _input(event):
 func _shoot():
 	var bullet = Node2D.new()
 	bullet.name = "Bullet"
-	bullet.position = Vector2(player_x, player_y - PLAYER_HEIGHT / 2.0)
+	bullet.position = Vector2(player_x, player_y - PLAYER_BASE_HEIGHT * LANE_SCALES[GameManager.player_lane] / 2.0)
 	bullet.set_meta("velocity", Vector2(0, -bullet_speed))
 	add_child(bullet)
 	bullets.append(bullet)
@@ -121,11 +128,12 @@ func _update_bullets(delta: float):
 func _spawn_enemy(vs: Vector2):
 	var enemy = Node2D.new()
 	enemy.name = "Enemy"
-	var lane = randi() % 3
-	var lane_scales = [0.5, 1.0, 1.5]
+	var lane = randi() % 5
 	enemy.set_meta("lane", lane)
-	enemy.set_meta("lane_scale", lane_scales[lane])
-	var lane_y = vs.y * (0.15 + lane * 0.2)
+	enemy.set_meta("lane_scale", LANE_SCALES[lane])
+	# Y position based on depth lane (back lanes higher, front lanes lower)
+	var lane_y_factors = [0.12, 0.22, 0.35, 0.50, 0.65]
+	var lane_y = vs.y * lane_y_factors[lane]
 	enemy.position = Vector2(vs.x + 20.0, lane_y)
 	enemy.set_meta("health", 2)
 	enemy.set_meta("points", 10)
@@ -139,6 +147,7 @@ func _update_enemies(delta: float):
 		e.position.y += sin(e.position.x * 0.02 + e.position.y * 0.1) * 0.3
 		if e.position.x < -30:
 			to_remove.append(e)
+			# Only damage player if enemy is in the same depth lane
 			if e.get_meta("lane", 1) == GameManager.player_lane:
 				GameManager.take_damage(5.0)
 	for e in to_remove:
@@ -151,7 +160,7 @@ func _check_combat_collisions():
 
 	for b in bullets:
 		for e in enemies:
-			var hit_radius: float = 18.0 * e.get_meta("lane_scale", 1.0)
+			var hit_radius: float = 14.0 * e.get_meta("lane_scale", 1.0)
 			if b.position.distance_to(e.position) < hit_radius:
 				var hp: int = e.get_meta("health", 1) - 1
 				e.set_meta("health", hp)
@@ -210,39 +219,45 @@ func _draw():
 	# Bullets
 	for b in bullets:
 		# Glow
-		draw_rect(Rect2(b.position.x - 4, b.position.y - 10, 8, 20), Color(1.0, 0.9, 0.2, 0.25))
+		draw_rect(Rect2(b.position.x - 3, b.position.y - 8, 6, 16), Color(1.0, 0.9, 0.2, 0.25))
 		# Core
-		draw_rect(Rect2(b.position.x - 2, b.position.y - 7, 4, 14), Color(1.0, 1.0, 0.4))
+		draw_rect(Rect2(b.position.x - 2, b.position.y - 5, 4, 10), Color(1.0, 1.0, 0.4))
 		# Bright center
-		draw_rect(Rect2(b.position.x - 1, b.position.y - 5, 2, 10), Color(1.0, 1.0, 0.9))
+		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 1.0, 0.9))
 
-	# Enemies — fixed size based on assigned lane
+	# Enemies — size scales by lane (3D depth)
 	for e in enemies:
 		var ex = e.position.x
 		var ey = e.position.y
-		var lane_scale: float = e.get_meta("lane_scale", 1.0)
-		var bw = 20.0 * lane_scale
-		var bh = 12.0 * lane_scale
+		var sc: float = e.get_meta("lane_scale", 1.0)
+		var bw = 18.0 * sc
+		var bh = 10.0 * sc
+		# Main body
 		draw_rect(Rect2(ex - bw / 2, ey - bh / 2, bw, bh), Color(0.7, 0.1, 0.1))
-		var ww = 6.0 * lane_scale
-		var wh = 6.0 * lane_scale
+		# Wings
+		var ww = 5.0 * sc
+		var wh = 5.0 * sc
 		draw_rect(Rect2(ex - bw / 2 - ww, ey - wh / 2, ww, wh), Color(0.5, 0.05, 0.05))
 		draw_rect(Rect2(ex + bw / 2, ey - wh / 2, ww, wh), Color(0.5, 0.05, 0.05))
-		var ew = 6.0 * lane_scale
+		# Eye
+		var ew = 5.0 * sc
 		draw_rect(Rect2(ex - ew / 2, ey - ew / 2, ew, ew), Color(0.2, 0.9, 0.2))
+		# Damage flash
 		var hp: int = e.get_meta("health", 2)
 		if hp < 2:
 			draw_rect(Rect2(ex - bw / 2 - 1, ey - bh / 2 - 1, bw + 2, bh + 2), Color(1, 1, 1, 0.3))
 
-	# Player train (gun turret view)
-	var lane_scales = [0.5, 1.0, 1.5]
-	var lane_y_offsets = [20.0, 0.0, -20.0]
+	# Player train (gun turret view) — size scales with lane
 	var lane = GameManager.player_lane
-	var sc = lane_scales[lane]
-	var y_off = lane_y_offsets[lane]
-	var pw = PLAYER_WIDTH * sc
-	var ph = PLAYER_HEIGHT * sc
-	var py = player_y + y_off
+	var sc = LANE_SCALES[lane]
+	var pw = PLAYER_BASE_WIDTH * sc
+	var ph = PLAYER_BASE_HEIGHT * sc
+	# Slight Y offset per lane for depth feel
+	var lane_y_offsets = [12.0, 6.0, 0.0, -6.0, -12.0]
+	var py = player_y + lane_y_offsets[lane]
+	# Body
 	draw_rect(Rect2(player_x - pw / 2, py - ph / 2, pw, ph), Color(0.2, 0.5, 0.8))
-	draw_rect(Rect2(player_x - 2, py - ph / 2.0 - 10 * sc, 4, 10 * sc), Color(0.4, 0.4, 0.5))
-	draw_rect(Rect2(player_x - 6 * sc, py - ph / 2.0 - 4 * sc, 12 * sc, 6 * sc), Color(0.3, 0.3, 0.4))
+	# Turret barrel
+	draw_rect(Rect2(player_x - 2 * sc, py - ph / 2.0 - 8 * sc, 4 * sc, 8 * sc), Color(0.4, 0.4, 0.5))
+	# Turret base
+	draw_rect(Rect2(player_x - 5 * sc, py - ph / 2.0 - 3 * sc, 10 * sc, 5 * sc), Color(0.3, 0.3, 0.4))
