@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#0a0a1a" rx="16"/>
+  <!-- Train body -->
+  <rect x="34" y="70" width="60" height="30" fill="#3388cc" rx="4"/>
+  <!-- Train front -->
+  <rect x="34" y="62" width="60" height="12" fill="#44aaee" rx="3"/>
+  <!-- Gun turret -->
+  <rect x="58" y="50" width="12" height="16" fill="#555"/>
+  <rect x="61" y="40" width="6" height="14" fill="#666"/>
+  <!-- Wheels -->
+  <rect x="38" y="98" width="10" height="6" fill="#222"/>
+  <rect x="80" y="98" width="10" height="6" fill="#222"/>
+  <!-- Alien -->
+  <rect x="48" y="20" width="24" height="16" fill="#cc2222" rx="3"/>
+  <rect x="42" y="24" width="10" height="8" fill="#aa1111"/>
+  <rect x="76" y="24" width="10" height="8" fill="#aa1111"/>
+  <rect x="55" y="24" width="6" height="6" fill="#22cc22"/>
+  <!-- Bullet -->
+  <rect x="62" y="56" width="4" height="10" fill="#ffee33"/>
+</svg>
