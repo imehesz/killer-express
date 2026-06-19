@@ -139,7 +139,8 @@ func _update_enemies(delta: float):
 		e.position.y += sin(e.position.x * 0.02 + e.position.y * 0.1) * 0.3
 		if e.position.x < -30:
 			to_remove.append(e)
-			GameManager.take_damage(5.0)
+			if e.get_meta("lane", 1) == GameManager.player_lane:
+				GameManager.take_damage(5.0)
 	for e in to_remove:
 		enemies.erase(e)
 		e.queue_free()
