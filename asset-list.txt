@@ -1,0 +1,42 @@
+=== SOUNDS (unchanged) ===
+
+assets/audio/sfx/
+1. shoot.ogg
+2. enemy_hit.ogg
+3. lane_switch.ogg
+4. crash.ogg
+5. menu_click.ogg
+6. game_over.ogg
+
+assets/audio/music/
+1. gameplay.ogg
+2. menu.ogg (optional)
+
+=== IMAGES ===
+
+PLAYER:
+1. player_top.png        — gun turret view (combat perspective)
+2. player_bottom.png     — monorail train (track perspective)
+
+ENEMIES / OBSTACLES (same thing, two views):
+3. alien_top.png         — alien ship from combat view
+4. alien_bottom.png      — same threat on the track
+5. obstacle_top.png      — debris/barrier from combat view
+6. obstacle_bottom.png   — same debris on the track
+
+BULLETS (two views of the same projectile):
+7. bullet_top.png        — fired from turret, going up
+8. bullet_bottom.png     — fired from train, going up track
+
+BACKGROUND (top screen parallax):
+9. starfield.png         — tiling star sky
+10. building.png         — city skyline tile
+
+TRACK (bottom screen):
+11. rail.png             — single rail line (tiled vertically)
+12. junction_left.png    — left crossover piece
+13. junction_right.png   — right crossover piece
+14. junction_both.png    — both-direction crossover
+
+UI:
+15. logo.png             — title screen l

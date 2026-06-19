@@ -206,7 +206,11 @@ func _draw():
 
 	# Buildings (medium parallax)
 	for i in range(6):
-		var bx = fmod(float(i * 70) - fg_offset * 0.5, w + 60.0) - 30.0
+		var raw_x = float(i * 70) - fg_offset * 0.5
+		var bx = fmod(raw_x, w + 60.0)
+		if bx < 0.0:
+			bx += w + 60.0
+		bx -= 30.0
 		var bh = 30.0 + fmod(float(i * 17), 40.0)
 		draw_rect(Rect2(bx, ground_y - bh, 50, bh), Color(0.1, 0.08, 0.12))
 		for wy in range(0, int(bh) - 8, 10):
