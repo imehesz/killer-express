@@ -44,6 +44,9 @@ var shoot_cooldown: float = 0.0
 var shoot_rate: float = 0.3
 var is_holding_shoot: bool = false
 
+# Particles (alien explosions visible from track view)
+var particles: Array = []  # [{pos, vel, life, max_life, color, size}]
+
 # Junction configs: valid path combos per lane (0-indexed).
 # Lane 0 = far left (no left), Lane 4 = far right (no right).
 var LANE_CONFIGS: Array = [
@@ -66,6 +69,7 @@ func _ready():
 	train_node.name = "Train"
 	add_child(train_node)
 	next_junction_delay = randf_range(0.25, 0.5)
+	GameManager.alien_exploded.connect(_on_alien_exploded)
 
 func set_scroll_speed(speed: float):
 	scroll_speed = speed
@@ -165,6 +169,9 @@ func _process(delta: float):
 	# Junctions
 	_update_junctions(delta, vs)
 	_check_junction_passage()
+
+	# Update particles
+	_update_particles(delta)
 
 	queue_redraw()
 
@@ -338,6 +345,36 @@ func _update_bullets(delta: float, vs: Vector2):
 		bullets.erase(b)
 		b.queue_free()
 
+# --- Particles ---
+
+func _on_alien_exploded(_world_pos: Vector2):
+	# Spawn small explosion at the train's position on the track
+	var center = train_node.position
+	for i in range(15):
+		var angle = randf() * TAU
+		var speed = randf_range(20.0, 80.0)
+		var bright = randf_range(0.7, 1.0)
+		var hue = randf_range(0.0, 0.15)
+		particles.append({
+			"pos": center,
+			"vel": Vector2(cos(angle) * speed, sin(angle) * speed),
+			"life": randf_range(0.5, 1.0),
+			"max_life": 1.0,
+			"color": Color.from_hsv(hue, 0.8, bright),
+			"size": randf_range(3.0, 7.0),
+		})
+
+func _update_particles(delta: float):
+	var to_remove: Array = []
+	for p in particles:
+		p["pos"] += p["vel"] * delta
+		p["vel"] *= 0.95
+		p["life"] -= delta
+		if p["life"] <= 0:
+			to_remove.append(p)
+	for p in to_remove:
+		particles.erase(p)
+
 # --- Drawing ---
 
 func _draw():
@@ -382,7 +419,7 @@ func _draw():
 	for i in range(LANE_COUNT):
 		var lx = lane_positions[i]
 		# Rail glow
-		draw_rect(Rect2(lx - TRACK_LINE_WIDTH, 0, TRACK_LINE_WIDTH * 2, h), Color(1.0, 0.8, 0.1, 0.2))
+		draw_rect(Rect2(lx - TRACK_LINE_WIDTH * 1.5, 0, TRACK_LINE_WIDTH * 3, h), Color(1.0, 0.8, 0.1, 0.35))
 		# Rail core
 		draw_rect(Rect2(lx - TRACK_LINE_WIDTH / 2.0, 0, TRACK_LINE_WIDTH, h), Color(1.0, 0.85, 0.1))
 
@@ -406,9 +443,9 @@ func _draw():
 
 	# Bullets
 	for b in bullets:
-		draw_rect(Rect2(b.position.x - 3, b.position.y - 7, 6, 14), Color(1.0, 0.9, 0.2, 0.25))
-		draw_rect(Rect2(b.position.x - 2, b.position.y - 5, 4, 10), Color(1.0, 1.0, 0.4))
-		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 1.0, 0.9))
+		draw_rect(Rect2(b.position.x - 3, b.position.y - 7, 6, 14), Color(1.0, 0.15, 0.1, 0.25))
+		draw_rect(Rect2(b.position.x - 2, b.position.y - 5, 4, 10), Color(1.0, 0.2, 0.15))
+		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 0.6, 0.5))
 
 	# Train
 	_draw_train()
@@ -498,3 +535,16 @@ func _draw_turn_indicator():
 		Vector2(rx - arrow_size * 0.5, arrow_y + arrow_size * 0.6),
 	])
 	draw_colored_polygon(pts_right, right_color)
+
+	# Particles (alien explosions)
+	for p in particles:
+		var alpha = clampf(p["life"] / p["max_life"], 0.0, 1.0)
+		var c: Color = p["color"]
+		c.a = alpha
+		var sz: float = p["size"] * (0.5 + alpha * 0.5)
+		var pos: Vector2 = p["pos"]
+		# Glow
+		var gc = Color(c.r, c.g, c.b, alpha * 0.3)
+		draw_rect(Rect2(pos.x - sz, pos.y - sz, sz * 2, sz * 2), gc)
+		# Core
+		draw_rect(Rect2(pos.x - sz * 0.4, pos.y - sz * 0.4, sz * 0.8, sz * 0.8), c)

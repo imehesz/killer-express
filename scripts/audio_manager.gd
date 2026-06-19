@@ -44,7 +44,7 @@ func _setup_buses():
 		AudioServer.set_bus_send(idx, "Master")
 
 func play_music(track_name: String):
-	var path = "res://assets/audio/music/%s" % track_name
+	var path = "res://assets/sounds/music/%s" % track_name
 	if path == _current_music_path and music_player.playing:
 		return
 	var stream = _load_audio(path)
@@ -62,7 +62,7 @@ func _on_music_finished():
 		music_player.play()
 
 func play_sfx(sfx_name: String):
-	var stream = _load_audio("res://assets/audio/sfx/%s" % sfx_name)
+	var stream = _load_audio("res://assets/sounds/sfx/%s" % sfx_name)
 	if stream:
 		var player = _get_free_player()
 		player.stream = stream

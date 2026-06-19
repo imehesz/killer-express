@@ -6,6 +6,7 @@ signal health_changed(new_health: float)
 signal game_over
 signal game_started
 signal speed_changed(new_speed: float)
+signal alien_exploded(world_pos: Vector2)
 
 var score: int = 0
 var health: float = 100.0

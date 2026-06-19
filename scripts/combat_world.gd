@@ -25,20 +25,37 @@ var train_texture: Texture2D
 const TRAIN_TEX_ASPECT: float = 881.0 / 348.0  # width / height
 const TRAIN_BASE_WIDTH: float = 168.0  # pixels at scale 1.0
 
-# 5-lane depth scaling (back to front)
+# Parallax textures
+var tracks_closer_md: Texture2D  # Middle layer (2906x800)
+var tracks_closest: Texture2D    # Foreground layer (2304x800)
+const TEX_NATIVE_H: float = 800.0  # Both track textures are 800px tall
+
+# 5-lane depth scaling (back to front) — used for enemies
 const LANE_SCALES: Array[float] = [0.4, 0.7, 1.0, 1.3, 1.6]
 
 # Parallax
 var bg_offset: float = 0.0
 var fg_offset: float = 0.0
 
+# Particles
+var particles: Array = []  # [{pos, vel, life, max_life, color, size}]
+var is_dead: bool = false
+
 func _ready():
 	train_texture = preload("res://assets/images/train_top.png")
+	tracks_closer_md = preload("res://assets/images/tracks-closer_md.png")
+	tracks_closest = preload("res://assets/images/tracks-closest.png")
+	GameManager.game_over.connect(_on_game_over)
 
 func set_scroll_speed(speed: float):
 	scroll_speed = speed
 
 func _process(delta: float):
+	if is_dead:
+		_update_particles(delta)
+		queue_redraw()
+		return
+
 	if not GameManager.is_playing:
 		return
 
@@ -47,10 +64,7 @@ func _process(delta: float):
 		return
 
 	player_x = vs.x / 2.0
-	# Player Y shifts slightly based on lane (deeper = higher on screen)
-	var lane = GameManager.player_lane
-	var lane_y_factors = [0.82, 0.80, 0.78, 0.76, 0.74]
-	player_y = vs.y * lane_y_factors[lane]
+	player_y = vs.y * 0.74
 
 	# Scroll
 	scroll_offset += scroll_speed * delta
@@ -81,6 +95,9 @@ func _process(delta: float):
 	# Check collisions
 	_check_combat_collisions()
 
+	# Update particles
+	_update_particles(delta)
+
 	queue_redraw()
 
 # --- Input handling (forwarded from SubViewportContainer) ---
@@ -105,12 +122,9 @@ func _input(event):
 # --- Bullet management ---
 
 func _shoot():
-	var lane = GameManager.player_lane
-	var sc = LANE_SCALES[lane]
-	var pw = TRAIN_BASE_WIDTH * sc
+	var pw = TRAIN_BASE_WIDTH * 1.6
 	var ph = pw / TRAIN_TEX_ASPECT
-	var lane_y_offsets = [12.0, 6.0, 0.0, -6.0, -12.0]
-	var py = player_y + lane_y_offsets[lane]
+	var py = player_y
 	var bullet = Node2D.new()
 	bullet.name = "Bullet"
 	bullet.position = Vector2(player_x, py - ph / 2.0)
@@ -154,9 +168,13 @@ func _update_enemies(delta: float):
 		e.position.y += sin(e.position.x * 0.02 + e.position.y * 0.1) * 0.3
 		if e.position.x < -30:
 			to_remove.append(e)
-			# Only damage player if enemy is in the same depth lane
+			# Explosion + damage if enemy is in the same depth lane
 			if e.get_meta("lane", 1) == GameManager.player_lane:
 				GameManager.take_damage(5.0)
+				_spawn_hit_particles(e.position, e.get_meta("lane_scale", 1.0))
+			else:
+				# Still explode visually even if no damage
+				_spawn_hit_particles(e.position, e.get_meta("lane_scale", 1.0))
 	for e in to_remove:
 		enemies.erase(e)
 		e.queue_free()
@@ -176,7 +194,8 @@ func _check_combat_collisions():
 					enemies_to_remove.append(e)
 					GameManager.add_score(e.get_meta("points", 10))
 					AudioManager.play_sfx("enemy_hit")
-				break
+					_spawn_hit_particles(e.position, e.get_meta("lane_scale", 1.0))
+					break
 
 	for b in bullets_to_remove:
 		if b in bullets:
@@ -186,6 +205,58 @@ func _check_combat_collisions():
 		if e in enemies:
 			enemies.erase(e)
 			e.queue_free()
+
+# --- Particles ---
+
+func _spawn_hit_particles(center: Vector2, _scale: float):
+	for i in range(20):
+		var angle = randf() * TAU
+		var speed = randf_range(20.0, 100.0)
+		var bright = randf_range(0.7, 1.0)
+		var hue = randf_range(0.0, 0.15)
+		particles.append({
+			"pos": center,
+			"vel": Vector2(cos(angle) * speed, sin(angle) * speed),
+			"life": randf_range(0.6, 1.2),
+			"max_life": 1.2,
+			"color": Color.from_hsv(hue, 0.8, bright),
+			"size": randf_range(4.0, 9.0),
+		})
+	GameManager.alien_exploded.emit(center)
+
+func _spawn_death_explosion(center: Vector2):
+	for i in range(100):
+		var angle = randf() * TAU
+		var speed = randf_range(30.0, 400.0)
+		var bright = randf_range(0.6, 1.0)
+		var hue = randf_range(0.0, 0.15)
+		particles.append({
+			"pos": center,
+			"vel": Vector2(cos(angle) * speed, sin(angle) * speed),
+			"life": randf_range(0.5, 2.0),
+			"max_life": 2.0,
+			"color": Color.from_hsv(hue, 0.8, bright),
+			"size": randf_range(4.0, 12.0),
+		})
+
+func _update_particles(delta: float):
+	var to_remove: Array = []
+	for p in particles:
+		p["pos"] += p["vel"] * delta
+		p["vel"] *= 0.96  # drag
+		p["life"] -= delta
+		if p["life"] <= 0:
+			to_remove.append(p)
+	for p in to_remove:
+		particles.erase(p)
+
+func _on_game_over():
+	is_dead = true
+	_spawn_death_explosion(Vector2(player_x, player_y))
+	# Keep updating particles briefly after death so they animate
+	var timer = get_tree().create_timer(1.5)
+	await timer.timeout
+	particles.clear()
 
 # --- Drawing ---
 
@@ -199,30 +270,41 @@ func _draw():
 
 	var ground_y = h * 0.88
 
-	# Sky
-	draw_rect(Rect2(0, 0, w, ground_y), Color(0.05, 0.05, 0.15))
+	# Sky — pure black
+	draw_rect(Rect2(0, 0, w, ground_y), Color(0.0, 0.0, 0.0))
 
-	# Stars (slow parallax)
+	# Stars (slowest parallax — furthest background layer)
 	var star_seed = 42
-	for i in range(20):
+	var star_offset = bg_offset * 0.3  # even slower than middle layer
+	for i in range(80):
 		star_seed = (star_seed * 1103515245 + 12345) & 0x7fffffff
-		var sx = fmod(float(star_seed % int(w + 20)) + bg_offset, w + 20.0) - 10.0
+		var sx = fmod(float(star_seed % int(w + 20)) + star_offset, w + 20.0) - 10.0
 		star_seed = (star_seed * 1103515245 + 12345) & 0x7fffffff
 		var sy = float(star_seed % int(ground_y - 20)) + 10.0
-		draw_rect(Rect2(sx, sy, 2, 2), Color(0.7, 0.7, 0.9))
+		star_seed = (star_seed * 1103515245 + 12345) & 0x7fffffff
+		var brightness = 0.4 + fmod(float(star_seed % 60), 60.0) / 100.0  # 0.4–1.0
+		var sz = 1.0 + fmod(float(star_seed % 3), 3.0)  # 1–2 px
+		draw_rect(Rect2(sx, sy, sz, sz), Color(brightness, brightness, brightness * 1.1))
 
-	# Buildings (medium parallax)
-	for i in range(6):
-		var raw_x = float(i * 70) - fg_offset * 0.5
-		var bx = fmod(raw_x, w + 60.0)
-		if bx < 0.0:
-			bx += w + 60.0
-		bx -= 30.0
-		var bh = 30.0 + fmod(float(i * 17), 40.0)
-		draw_rect(Rect2(bx, ground_y - bh, 50, bh), Color(0.1, 0.08, 0.12))
-		for wy in range(0, int(bh) - 8, 10):
-			for wx in range(4, 46, 14):
-				draw_rect(Rect2(bx + wx, ground_y - bh + wy + 3, 6, 6), Color(0.6, 0.5, 0.2, 0.6))
+	# Middle parallax layer (tracks-closer_md) — 0.3x speed
+	var md_scale = h / TEX_NATIVE_H
+	var md_w = tracks_closer_md.get_width() * md_scale
+	var md_h = h
+	var md_offset_x = fmod(bg_offset, md_w)
+	var md_x = -md_offset_x
+	while md_x < w:
+		draw_texture_rect(tracks_closer_md, Rect2(md_x, 0, md_w, md_h), false)
+		md_x += md_w
+
+	# Foreground parallax layer (tracks-closest) — 0.7x speed
+	var fg_scale = h / TEX_NATIVE_H
+	var fg_tex_w = tracks_closest.get_width() * fg_scale
+	var fg_tex_h = h
+	var fg_offset_x = fmod(fg_offset, fg_tex_w)
+	var fg_x = -fg_offset_x
+	while fg_x < w:
+		draw_texture_rect(tracks_closest, Rect2(fg_x, 0, fg_tex_w, fg_tex_h), false)
+		fg_x += fg_tex_w
 
 	# Ground
 	draw_rect(Rect2(0, ground_y, w, h - ground_y), Color(0.12, 0.15, 0.08))
@@ -230,11 +312,11 @@ func _draw():
 	# Bullets
 	for b in bullets:
 		# Glow
-		draw_rect(Rect2(b.position.x - 3, b.position.y - 8, 6, 16), Color(1.0, 0.9, 0.2, 0.25))
+		draw_rect(Rect2(b.position.x - 3, b.position.y - 8, 6, 16), Color(1.0, 0.15, 0.1, 0.25))
 		# Core
-		draw_rect(Rect2(b.position.x - 2, b.position.y - 5, 4, 10), Color(1.0, 1.0, 0.4))
+		draw_rect(Rect2(b.position.x - 2, b.position.y - 5, 4, 10), Color(1.0, 0.2, 0.15))
 		# Bright center
-		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 1.0, 0.9))
+		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 0.6, 0.5))
 
 	# Enemies — size scales by lane (3D depth)
 	for e in enemies:
@@ -258,14 +340,28 @@ func _draw():
 		if hp < 2:
 			draw_rect(Rect2(ex - bw / 2 - 1, ey - bh / 2 - 1, bw + 2, bh + 2), Color(1, 1, 1, 0.3))
 
-	# Player train (gun turret view) — texture scales with lane
-	var lane = GameManager.player_lane
-	var sc = LANE_SCALES[lane]
-	var pw = TRAIN_BASE_WIDTH * sc
-	var ph = pw / TRAIN_TEX_ASPECT
-	# Slight Y offset per lane for depth feel
-	var lane_y_offsets = [12.0, 6.0, 0.0, -6.0, -12.0]
-	var py = player_y + lane_y_offsets[lane]
-	# Centered on player position
-	var train_rect = Rect2(player_x - pw / 2.0, py - ph / 2.0, pw, ph)
-	draw_texture_rect(train_texture, train_rect, false)
+	# Player train (gun turret view) — fixed position and size
+	if not is_dead:
+		var pw = TRAIN_BASE_WIDTH * 1.6
+		var ph = pw / TRAIN_TEX_ASPECT
+		var py = player_y
+		# Subtle motion shake — layered sine waves for organic feel
+		var t = scroll_offset * 0.05
+		var shake_x = sin(t * 3.7) * 1.2 + sin(t * 7.1) * 0.6
+		var shake_y = cos(t * 4.3) * 0.8 + cos(t * 6.3) * 0.5
+		# Centered on player position with shake
+		var train_rect = Rect2(player_x - pw / 2.0 + shake_x, py - ph / 2.0 + shake_y, pw, ph)
+		draw_texture_rect(train_texture, train_rect, false)
+
+	# Particles (drawn on top of everything)
+	for p in particles:
+		var alpha = clampf(p["life"] / p["max_life"], 0.0, 1.0)
+		var c: Color = p["color"]
+		c.a = alpha
+		var sz: float = p["size"] * (0.5 + alpha * 0.5)
+		var pos: Vector2 = p["pos"]
+		# Glow
+		var gc = Color(c.r, c.g, c.b, alpha * 0.3)
+		draw_rect(Rect2(pos.x - sz, pos.y - sz, sz * 2, sz * 2), gc)
+		# Core
+		draw_rect(Rect2(pos.x - sz * 0.4, pos.y - sz * 0.4, sz * 0.8, sz * 0.8), c)

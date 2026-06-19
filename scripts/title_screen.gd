@@ -10,6 +10,7 @@ func _ready():
 	start_button.pressed.connect(_on_start_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	_update_labels()
+	AudioManager.play_music("music_menu")
 
 func _update_labels():
 	title_label.text = "KILLER XPRESS"

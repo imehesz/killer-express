@@ -19,6 +19,8 @@ func _ready():
 	GameManager.health_changed.connect(_on_health_changed)
 	GameManager.game_over.connect(_on_game_over)
 
+	AudioManager.play_music("music_game")
+
 	var combat_scene = preload("res://scenes/combat_world.tscn")
 	combat_world = combat_scene.instantiate()
 	top_viewport.add_child(combat_world)
