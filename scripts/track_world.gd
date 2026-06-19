@@ -62,6 +62,7 @@ func switch_lane(direction: int):
 	var new_lane = current_lane + direction
 	if new_lane >= 0 and new_lane < LANE_COUNT:
 		current_lane = new_lane
+		GameManager.player_lane = current_lane
 		target_x = lane_positions[current_lane]
 		AudioManager.play_sfx("lane_switch")
 

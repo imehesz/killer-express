@@ -234,6 +234,14 @@ func _draw():
 			draw_rect(Rect2(ex - bw / 2 - 1, ey - bh / 2 - 1, bw + 2, bh + 2), Color(1, 1, 1, 0.3))
 
 	# Player train (gun turret view)
-	draw_rect(Rect2(player_x - PLAYER_WIDTH / 2, player_y - PLAYER_HEIGHT / 2, PLAYER_WIDTH, PLAYER_HEIGHT), Color(0.2, 0.5, 0.8))
-	draw_rect(Rect2(player_x - 2, player_y - PLAYER_HEIGHT / 2.0 - 10, 4, 10), Color(0.4, 0.4, 0.5))
-	draw_rect(Rect2(player_x - 6, player_y - PLAYER_HEIGHT / 2.0 - 4, 12, 6), Color(0.3, 0.3, 0.4))
+	var lane_scales = [0.5, 1.0, 1.5]
+	var lane_y_offsets = [20.0, 0.0, -20.0]
+	var lane = GameManager.player_lane
+	var sc = lane_scales[lane]
+	var y_off = lane_y_offsets[lane]
+	var pw = PLAYER_WIDTH * sc
+	var ph = PLAYER_HEIGHT * sc
+	var py = player_y + y_off
+	draw_rect(Rect2(player_x - pw / 2, py - ph / 2, pw, ph), Color(0.2, 0.5, 0.8))
+	draw_rect(Rect2(player_x - 2, py - ph / 2.0 - 10 * sc, 4, 10 * sc), Color(0.4, 0.4, 0.5))
+	draw_rect(Rect2(player_x - 6 * sc, py - ph / 2.0 - 4 * sc, 12 * sc, 6 * sc), Color(0.3, 0.3, 0.4))

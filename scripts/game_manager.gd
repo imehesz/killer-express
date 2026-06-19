@@ -14,6 +14,7 @@ var game_speed: float = 120.0
 var base_speed: float = 120.0
 var is_playing: bool = false
 var distance: float = 0.0
+var player_lane: int = 1
 
 # Difficulty scaling
 var speed_increase_rate: float = 2.0
