@@ -4,6 +4,8 @@ A frantic vertically split-screen runner. Defend the train from below, destroy a
 
 Based on the classic Suicide Express game from the 1980s.
 
+Play: https://mehesz.net/games/killer-xpress`
+
 ## How to Play
 
 1. Open the project in Godot 4.4+

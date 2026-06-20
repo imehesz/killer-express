@@ -6,6 +6,7 @@ extends Control
 @onready var leaderboard_button: Button = %LeaderboardButton
 @onready var title_label: Label = %TitleLabel
 @onready var subtitle_label: Label = %SubtitleLabel
+@onready var version_label: Label = %VersionLabel
 
 func _ready():
 	start_button.pressed.connect(_on_start_pressed)
@@ -17,6 +18,8 @@ func _ready():
 func _update_labels():
 	title_label.text = "KILLER XPRESS"
 	subtitle_label.text = "Defend the train. Destroy the aliens."
+	var dt = Time.get_datetime_dict_from_system()
+	version_label.text = "v.0.1.%04d%02d%02d%02d%02d" % [dt.year, dt.month, dt.day, dt.hour, dt.minute]
 
 func _on_start_pressed():
 	AudioManager.play_sfx("menu_click")

@@ -365,15 +365,6 @@ func _draw():
 	# Ground
 	draw_rect(Rect2(0, ground_y, w, h - ground_y), Color(0.12, 0.15, 0.08))
 
-	# Bullets
-	for b in bullets:
-		# Glow
-		draw_rect(Rect2(b.position.x - 3, b.position.y - 8, 6, 16), Color(1.0, 0.15, 0.1, 0.25))
-		# Core
-		draw_rect(Rect2(b.position.x - 2, b.position.y - 5, 4, 10), Color(1.0, 0.2, 0.15))
-		# Bright center
-		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 0.6, 0.5))
-
 	# Enemies — textured sprites scaled by lane depth
 	for e in enemies:
 		var ex = e.position.x
@@ -395,15 +386,25 @@ func _draw():
 		var pw = TRAIN_BASE_WIDTH * 1.6
 		var ph = pw / TRAIN_TEX_ASPECT
 		var py = player_y
-		# Subtle motion shake — layered sine waves for organic feel
+		# Subtle motion shake — layered sine waves, boosted when firing
+		var shake_mult: float = 0.3 if not is_holding_shoot else 1.0
 		var t = scroll_offset * 0.05
-		var shake_x = sin(t * 3.7) * 1.2 + sin(t * 7.1) * 0.6
-		var shake_y = cos(t * 4.3) * 0.8 + cos(t * 6.3) * 0.5
+		var shake_x = (sin(t * 3.7) * 1.2 + sin(t * 7.1) * 0.6) * shake_mult
+		var shake_y = (cos(t * 4.3) * 0.8 + cos(t * 6.3) * 0.5) * shake_mult
 		# Centered on player position with shake
 		var train_rect = Rect2(player_x - pw / 2.0 + shake_x, py - ph / 2.0 + shake_y, pw, ph)
 		draw_texture_rect(train_texture, train_rect, false)
 
-	# Muzzle flashes (bright fire between train and particles)
+	# Bullets (drawn after train so they're never occluded on mobile)
+	for b in bullets:
+		# Glow
+		draw_rect(Rect2(b.position.x - 4, b.position.y - 10, 8, 20), Color(1.0, 0.15, 0.1, 0.3))
+		# Core
+		draw_rect(Rect2(b.position.x - 3, b.position.y - 7, 6, 14), Color(1.0, 0.2, 0.15))
+		# Bright center
+		draw_rect(Rect2(b.position.x - 1, b.position.y - 4, 2, 8), Color(1.0, 0.6, 0.5))
+
+	# Muzzle flashes (bright fire on top of everything)
 	for f in muzzle_flashes:
 		var alpha = clampf(f["life"] / f["max_life"], 0.0, 1.0)
 		var c: Color = f["color"]

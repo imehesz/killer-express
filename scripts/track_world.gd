@@ -266,7 +266,6 @@ func _execute_junction(junction: Node2D):
 	if switched:
 		target_x = lane_positions[current_lane]
 		GameManager.player_lane = current_lane
-		AudioManager.play_sfx("lane_switch")
 
 	# Always reset turn signal after junction
 	queued_turn = "none"
