@@ -30,6 +30,10 @@ var tracks_closer_md: Texture2D  # Middle layer (2906x800)
 var tracks_closest: Texture2D    # Foreground layer (2304x800)
 const TEX_NATIVE_H: float = 800.0  # Both track textures are 800px tall
 
+# Enemy textures
+var alien_textures: Array[Texture2D] = []
+const ALIEN_BASE_WIDTH: float = 32.0  # pixels at scale 1.0
+
 # 5-lane depth scaling (back to front) — used for enemies
 const LANE_SCALES: Array[float] = [0.4, 0.7, 1.0, 1.3, 1.6]
 
@@ -39,12 +43,17 @@ var fg_offset: float = 0.0
 
 # Particles
 var particles: Array = []  # [{pos, vel, life, max_life, color, size}]
+var muzzle_flashes: Array = []  # [{pos, vel, life, max_life, color, size}]
 var is_dead: bool = false
 
 func _ready():
 	train_texture = preload("res://assets/images/train_top.png")
 	tracks_closer_md = preload("res://assets/images/tracks-closer_md.png")
 	tracks_closest = preload("res://assets/images/tracks-closest.png")
+	alien_textures = [
+		preload("res://assets/images/alien-1.png"),
+		preload("res://assets/images/alien-2.png"),
+	]
 	GameManager.game_over.connect(_on_game_over)
 
 func set_scroll_speed(speed: float):
@@ -97,6 +106,7 @@ func _process(delta: float):
 
 	# Update particles
 	_update_particles(delta)
+	_update_muzzle_flashes(delta)
 
 	queue_redraw()
 
@@ -125,20 +135,33 @@ func _shoot():
 	var pw = TRAIN_BASE_WIDTH * 1.6
 	var ph = pw / TRAIN_TEX_ASPECT
 	var py = player_y
+	# Upward bullet
 	var bullet = Node2D.new()
 	bullet.name = "Bullet"
 	bullet.position = Vector2(player_x, py - ph / 2.0)
 	bullet.set_meta("velocity", Vector2(0, -bullet_speed))
 	add_child(bullet)
 	bullets.append(bullet)
+	# Forward bullet (to the right)
+	var bullet2 = Node2D.new()
+	bullet2.name = "Bullet"
+	bullet2.position = Vector2(player_x + pw / 2.0, py)
+	bullet2.set_meta("velocity", Vector2(bullet_speed, 0))
+	add_child(bullet2)
+	bullets.append(bullet2)
+	# Muzzle flashes — upward gun
+	_spawn_muzzle_flash(Vector2(player_x, py - ph / 2.0), Vector2(0, -1))
+	# Muzzle flashes — forward gun
+	_spawn_muzzle_flash(Vector2(player_x + pw / 2.0, py), Vector2(1, 0))
 	AudioManager.play_sfx("shoot")
 
 func _update_bullets(delta: float):
 	var to_remove: Array[Node2D] = []
+	var vs = get_viewport_rect().size
 	for b in bullets:
 		var vel: Vector2 = b.get_meta("velocity", Vector2(0, -bullet_speed))
 		b.position += vel * delta
-		if b.position.y < -20:
+		if b.position.y < -20 or b.position.x > vs.x + 20 or b.position.x < -20:
 			to_remove.append(b)
 	for b in to_remove:
 		bullets.erase(b)
@@ -152,6 +175,7 @@ func _spawn_enemy(vs: Vector2):
 	var lane = randi() % 5
 	enemy.set_meta("lane", lane)
 	enemy.set_meta("lane_scale", LANE_SCALES[lane])
+	enemy.set_meta("texture_index", randi() % alien_textures.size())
 	# Y position based on depth lane (back lanes higher, front lanes lower)
 	var lane_y_factors = [0.12, 0.22, 0.35, 0.50, 0.65]
 	var lane_y = vs.y * lane_y_factors[lane]
@@ -185,7 +209,7 @@ func _check_combat_collisions():
 
 	for b in bullets:
 		for e in enemies:
-			var hit_radius: float = 14.0 * e.get_meta("lane_scale", 1.0)
+			var hit_radius: float = 18.0 * e.get_meta("lane_scale", 1.0)
 			if b.position.distance_to(e.position) < hit_radius:
 				var hp: int = e.get_meta("health", 1) - 1
 				e.set_meta("health", hp)
@@ -207,6 +231,27 @@ func _check_combat_collisions():
 			e.queue_free()
 
 # --- Particles ---
+
+func _spawn_muzzle_flash(pos: Vector2, dir: Vector2):
+	# Burst of bright fire particles in the given direction
+	for i in range(8):
+		var spread = randf_range(-0.6, 0.6)  # lateral spread
+		var forward = randf_range(0.5, 1.0)   # how far forward
+		var speed = randf_range(80.0, 200.0)
+		var vel = Vector2(
+			dir.x * forward * speed + dir.y * spread * speed,
+			dir.y * forward * speed + dir.x * spread * speed
+		)
+		var bright = randf_range(0.8, 1.0)
+		var hue = randf_range(0.05, 0.12)  # orange-yellow range
+		muzzle_flashes.append({
+			"pos": pos,
+			"vel": vel,
+			"life": randf_range(0.05, 0.15),
+			"max_life": 0.15,
+			"color": Color.from_hsv(hue, 0.9, bright),
+			"size": randf_range(3.0, 6.0),
+		})
 
 func _spawn_hit_particles(center: Vector2, _scale: float):
 	for i in range(20):
@@ -249,6 +294,17 @@ func _update_particles(delta: float):
 			to_remove.append(p)
 	for p in to_remove:
 		particles.erase(p)
+
+func _update_muzzle_flashes(delta: float):
+	var to_remove: Array = []
+	for f in muzzle_flashes:
+		f["pos"] += f["vel"] * delta
+		f["vel"] *= 0.85  # fast decay
+		f["life"] -= delta
+		if f["life"] <= 0:
+			to_remove.append(f)
+	for f in to_remove:
+		muzzle_flashes.erase(f)
 
 func _on_game_over():
 	is_dead = true
@@ -318,27 +374,21 @@ func _draw():
 		# Bright center
 		draw_rect(Rect2(b.position.x - 1, b.position.y - 3, 2, 6), Color(1.0, 0.6, 0.5))
 
-	# Enemies — size scales by lane (3D depth)
+	# Enemies — textured sprites scaled by lane depth
 	for e in enemies:
 		var ex = e.position.x
 		var ey = e.position.y
 		var sc: float = e.get_meta("lane_scale", 1.0)
-		var bw = 18.0 * sc
-		var bh = 10.0 * sc
-		# Main body
-		draw_rect(Rect2(ex - bw / 2, ey - bh / 2, bw, bh), Color(0.7, 0.1, 0.1))
-		# Wings
-		var ww = 5.0 * sc
-		var wh = 5.0 * sc
-		draw_rect(Rect2(ex - bw / 2 - ww, ey - wh / 2, ww, wh), Color(0.5, 0.05, 0.05))
-		draw_rect(Rect2(ex + bw / 2, ey - wh / 2, ww, wh), Color(0.5, 0.05, 0.05))
-		# Eye
-		var ew = 5.0 * sc
-		draw_rect(Rect2(ex - ew / 2, ey - ew / 2, ew, ew), Color(0.2, 0.9, 0.2))
+		var tex: Texture2D = alien_textures[e.get_meta("texture_index", 0)]
+		var tex_w: float = tex.get_width()
+		var tex_h: float = tex.get_height()
+		var draw_w: float = ALIEN_BASE_WIDTH * sc
+		var draw_h: float = draw_w * (tex_h / tex_w)
 		# Damage flash
 		var hp: int = e.get_meta("health", 2)
 		if hp < 2:
-			draw_rect(Rect2(ex - bw / 2 - 1, ey - bh / 2 - 1, bw + 2, bh + 2), Color(1, 1, 1, 0.3))
+			draw_texture_rect(tex, Rect2(ex - draw_w / 2 - 1, ey - draw_h / 2 - 1, draw_w + 2, draw_h + 2), false, Color(1, 1, 1, 0.5))
+		draw_texture_rect(tex, Rect2(ex - draw_w / 2, ey - draw_h / 2, draw_w, draw_h), false)
 
 	# Player train (gun turret view) — fixed position and size
 	if not is_dead:
@@ -352,6 +402,19 @@ func _draw():
 		# Centered on player position with shake
 		var train_rect = Rect2(player_x - pw / 2.0 + shake_x, py - ph / 2.0 + shake_y, pw, ph)
 		draw_texture_rect(train_texture, train_rect, false)
+
+	# Muzzle flashes (bright fire between train and particles)
+	for f in muzzle_flashes:
+		var alpha = clampf(f["life"] / f["max_life"], 0.0, 1.0)
+		var c: Color = f["color"]
+		var sz: float = f["size"] * (0.3 + alpha * 0.7)
+		var pos: Vector2 = f["pos"]
+		# Hot core (white-yellow)
+		var core = Color(1.0, 1.0, 0.7, alpha)
+		draw_rect(Rect2(pos.x - sz * 0.3, pos.y - sz * 0.3, sz * 0.6, sz * 0.6), core)
+		# Glow (orange)
+		var gc = Color(c.r, c.g, c.b, alpha * 0.5)
+		draw_rect(Rect2(pos.x - sz, pos.y - sz, sz * 2, sz * 2), gc)
 
 	# Particles (drawn on top of everything)
 	for p in particles:

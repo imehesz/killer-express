@@ -26,6 +26,7 @@ func _on_music_changed(value: float):
 func _on_sfx_changed(value: float):
 	AudioManager.set_sfx_volume(value)
 	_update_sfx_label(value)
+	AudioManager.play_sfx("menu_click")
 
 func _update_music_label(value: float):
 	music_label.text = "Music: %d%%" % int(value * 100)

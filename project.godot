@@ -14,12 +14,19 @@ config/name="Killer Xpress"
 config/description="A frantic vertically split-screen runner. Control an armed train on the bottom, fight aliens on top."
 run/main_scene="res://scenes/title_screen.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
+boot_splash/image="uid://c73jnetu831jn"
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameManager="*res://scripts/game_manager.gd"
 AudioManager="*res://scripts/audio_manager.gd"
+LeaderboardManager="*res://scripts/leaderboard_manager.gd"
+
+[boot_splash]
+
+image="res://assets/images/loading-screen.png"
+show_image=true
 
 [display]
 

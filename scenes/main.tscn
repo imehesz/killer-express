@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://main001"]
+[gd_scene load_steps=3 format=3 uid="uid://main001"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_script"]
+[ext_resource type="FontFile" path="res://assets/fonts/PressStart2P-Regular.ttf" id="1_font"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -66,6 +67,8 @@ offset_right = 100.0
 offset_bottom = 28.0
 text = "0"
 horizontal_alignment = 0
+theme_override_font_sizes/font_size = 12
+theme_override_fonts/font = ExtResource("1_font")
 
 [node name="HealthBar" type="ProgressBar" parent="HUD"]
 unique_name_in_owner = true
@@ -86,3 +89,17 @@ offset_right = 260.0
 offset_bottom = 48.0
 text = "100%"
 horizontal_alignment = 0
+theme_override_font_sizes/font_size = 8
+theme_override_fonts/font = ExtResource("1_font")
+
+[node name="DistanceLabel" type="Label" parent="HUD"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 260.0
+offset_top = 8.0
+offset_right = 350.0
+offset_bottom = 28.0
+text = "0m"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 12
+theme_override_fonts/font = ExtResource("1_font")

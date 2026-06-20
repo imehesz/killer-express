@@ -298,7 +298,7 @@ func _check_obstacle_collisions():
 			GameManager.take_damage(20.0)
 			obstacles.erase(obs)
 			obs.queue_free()
-			AudioManager.play_sfx("crash")
+			AudioManager.play_sfx("enemy_hit")
 			break
 
 func _bullet_obstacle_collisions():

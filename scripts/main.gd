@@ -9,6 +9,7 @@ extends Control
 @onready var score_label: Label = %ScoreLabel
 @onready var health_bar: ProgressBar = %HealthBar
 @onready var health_label: Label = %HealthLabel
+@onready var distance_label: Label = %DistanceLabel
 @onready var divider: ColorRect = %Divider
 
 var combat_world: Node2D
@@ -43,6 +44,9 @@ func _process(delta: float):
 			combat_world.set_scroll_speed(spd)
 		if track_world:
 			track_world.set_scroll_speed(spd)
+		# Update distance display (distance is in raw units, /10 = meters)
+		var dist_m = int(GameManager.distance / 10.0)
+		distance_label.text = "%dm" % dist_m
 
 func _sync_viewport_sizes():
 	var top_size = top_container.size

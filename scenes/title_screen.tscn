@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://title001"]
+[gd_scene load_steps=4 format=3 uid="uid://title001"]
 
+[ext_resource type="FontFile" uid="uid://biu5ge6do1sgs" path="res://assets/fonts/PressStart2P-Regular.ttf" id="1_font"]
 [ext_resource type="Script" uid="uid://qm5dearvx11m" path="res://scripts/title_screen.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://cg2lsfxorcyop" path="res://assets/images/menu-bg.png" id="2_bg"]
 
 [node name="TitleScreen" type="Control"]
 layout_mode = 3
@@ -11,14 +13,25 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="MenuBG" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.05, 0.05, 0.12, 1)
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Overlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.75)
 
 [node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -41,6 +54,8 @@ size_flags_vertical = 0
 [node name="TitleLabel" type="Label" parent="VBox"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 14
 text = "KILLER XPRESS"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -48,6 +63,8 @@ vertical_alignment = 1
 [node name="SubtitleLabel" type="Label" parent="VBox"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 8
 text = "Defend the train. Destroy the aliens."
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -62,6 +79,8 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 size_flags_horizontal = 4
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 12
 text = "START"
 
 [node name="SettingsButton" type="Button" parent="VBox"]
@@ -69,7 +88,18 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 size_flags_horizontal = 4
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 12
 text = "SETTINGS"
+
+[node name="LeaderboardButton" type="Button" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 50)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 12
+text = "LEADERBOARD"
 
 [node name="VersionLabel" type="Label" parent="."]
 layout_mode = 1
@@ -83,5 +113,7 @@ offset_top = -30.0
 offset_right = 60.0
 grow_horizontal = 2
 grow_vertical = 0
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 8
 text = "v0.1"
 horizontal_alignment = 1

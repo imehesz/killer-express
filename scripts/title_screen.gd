@@ -3,12 +3,14 @@ extends Control
 
 @onready var start_button: Button = %StartButton
 @onready var settings_button: Button = %SettingsButton
+@onready var leaderboard_button: Button = %LeaderboardButton
 @onready var title_label: Label = %TitleLabel
 @onready var subtitle_label: Label = %SubtitleLabel
 
 func _ready():
 	start_button.pressed.connect(_on_start_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
+	leaderboard_button.pressed.connect(_on_leaderboard_pressed)
 	_update_labels()
 	AudioManager.play_music("music_menu")
 
@@ -24,3 +26,7 @@ func _on_start_pressed():
 func _on_settings_pressed():
 	AudioManager.play_sfx("menu_click")
 	get_tree().change_scene_to_file("res://scenes/settings_screen.tscn")
+
+func _on_leaderboard_pressed():
+	AudioManager.play_sfx("menu_click")
+	get_tree().change_scene_to_file("res://scenes/leaderboard.tscn")

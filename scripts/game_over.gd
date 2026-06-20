@@ -11,7 +11,12 @@ func _ready():
 	retry_button.pressed.connect(_on_retry_pressed)
 	menu_button.pressed.connect(_on_menu_pressed)
 	title_label.text = "GAME OVER"
+	_save_score()
 	_show_results()
+
+func _save_score():
+	var dist_m = int(GameManager.distance / 10.0)
+	LeaderboardManager.add_entry(GameManager.score, dist_m)
 
 func _show_results():
 	score_label.text = "Score: %d" % GameManager.score
